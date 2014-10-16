@@ -1,0 +1,20 @@
+{
+  "name": "cwpp-service",
+  "version": "0.0.0",
+  "description": "The service for ChromaWay payment protocol",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "bitcoin",
+    "payments"
+  ],
+  "dependencies": {
+     "express": "",
+     "body-parser": "",
+     "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git"
+  },
+  "author": "Alex Mizrahi <alex.mizrahi@gmail.com>",
+  "license": "ISC"
+}
