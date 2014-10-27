@@ -2,7 +2,7 @@ var WalletCore = require('cc-wallet-core');
 var OperationalTx = WalletCore.tx.OperationalTx;
 var CoinList = WalletCore.coin.CoinList;
 var inherits = require('util').inherits;
-var BIP39 = require('BIP39');
+var BIP39 = require('bip39');
 
 var wallet = null;
 var seed = null;
