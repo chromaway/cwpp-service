@@ -5,14 +5,23 @@ var sendJson = require("send-data/json");
 var stringify = require('json-stable-stringify');
 var SHA256 = require("crypto-js/sha256");
 var server_process = require("./src/server_process");
+var cors = require('cors');
+var logger = require('morgan');
 
 
 var app = express();
+
+var cors_options = {origin: true, credentials: true};
+app.use(logger());
+app.use(cors(cors_options));
+app.options('*', cors(cors_options)); 
+
 var cwpp_api = express.Router();
 
 var pay_reqs = {};
 
 cwpp_api.post('/new-request', function (req, res) {
+    console.log('new-request');
     jsonBody(req, function (err, body) {
         var hash = SHA256(stringify(body)).toString();
         pay_reqs[hash] = body;
