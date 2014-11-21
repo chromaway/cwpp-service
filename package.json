@@ -12,7 +12,9 @@
   ],
   "dependencies": {
      "express": "",
-     "body-parser": "",
+     "body": "",
+     "send-data": "",
+     "json-stable-stringify":"", "crypto-js":"",
      "bip39": "",
      "cors": "",
      "morgan": "",
