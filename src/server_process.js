@@ -36,7 +36,8 @@ function initialize_wallet() {
     }
     console.log("My Bitcoin address:");
     console.log(wallet.getSomeAddress(wallet.adManager.getByMoniker('bitcoin'), false));
-    wallet.fullScanAllAddresses(function () {});
+    wallet.on('error', function (err) { console.log(err);});
+    wallet.subscribeAndSyncAllAddresses(function () {});
 }
 
 function get_wallet() {
