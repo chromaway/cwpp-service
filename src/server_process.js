@@ -28,9 +28,11 @@ function initialize_wallet() {
         unit: 100
     }];
 
-    wallet = new WalletCore.Wallet(
-        {testnet: true, systemAssetDefinitions: systemAssetDefinitions}
-    );
+    wallet = new WalletCore.Wallet({
+            testnet: true, 
+            blockchain: 'NaiveBlockchain',
+            systemAssetDefinitions: systemAssetDefinitions
+    });
     
     var mnemonic = 'provide rail journey neither script nasty fetch south seat obvious army two';
     var password = '';

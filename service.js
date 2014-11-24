@@ -48,8 +48,10 @@ cwpp_api.post('/process/:rq_hash', function (req, res) {
             else {
                 process_request(pay_reqs[req.params.rq_hash], body,
                 function (err, res_body) {
-                    if (err)
+                    if (err) {
                         res.status(500).json({error: err.toString()});
+                        console.log(err.stack);
+                    }                        
                     else
                         res.json(res_body);
                 });
