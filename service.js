@@ -22,7 +22,7 @@ var pay_reqs = {};
 
 cwpp_api.post('/new-request', function (req, res) {
   console.log('new-request');
-  jsonBody(req, function (err, body) {
+  jsonBody(req, function (error, body) {
     var hash = SHA256(stringify(body)).toString();
     pay_reqs[hash] = body;
     sendJson(req, res, {"hash": hash});
@@ -55,8 +55,8 @@ cwpp_api.post('/process/:rq_hash', function (req, res) {
 
     process_request(pay_reqs[req.params.rq_hash], body, function (error, res_body) {
       if (error) {
-        res.status(500).json({error: err.toString()});
-        console.log(err.stack);
+        res.status(500).json({error: error.toString()});
+        console.log(error.stack);
 
       } else {
         res.json(res_body);

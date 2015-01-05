@@ -104,10 +104,6 @@ CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
   });
 };
 
-CInputsOperationalTx.prototype.getRequiredFee = function (txsize) {
-  return new ColorValue(new cclib.UncoloredColorDefinition(), 0);
-};
-
 CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator, cb) {
   var self = this;
   if (colorValue.isUncolored()) {
