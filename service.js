@@ -69,6 +69,12 @@ cwpp_api.post('/process/:rq_hash', function (req, res) {
 app.use('/cwpp', cwpp_api);
 
 
-var server = app.listen(4242, function () {
-  console.log('Listening on port %d', server.address().port);
+server_process.initialize_wallet(function (error) {
+  if (error !== null) {
+    throw error;
+  }
+
+  var server = app.listen(4242, function () {
+    console.log('Listening on port %d', server.address().port);
+  });
 });

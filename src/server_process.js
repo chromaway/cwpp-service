@@ -19,7 +19,7 @@ function addr_to_script_hex(addr) {
   return script.toHex();
 }
 
-function initialize_wallet() {
+function initialize_wallet(done) {
   var systemAssetDefinitions = [
     {
       monikers: ['gold'],
@@ -35,7 +35,12 @@ function initialize_wallet() {
   wallet = new WalletCore.Wallet({
     testnet: true,
     blockchain: 'NaiveBlockchain',
+    storageSaveTimeout: 0,
+    spendUnconfirmedCoins: true,
     systemAssetDefinitions: systemAssetDefinitions
+  });
+  wallet.on('error', function (error) {
+    console.log('Wallet error: ', error.stack || error);
   });
 
   var mnemonic = 'provide rail journey neither script nasty fetch south seat obvious army two';
@@ -44,23 +49,31 @@ function initialize_wallet() {
   if (!wallet.isInitialized()) {
     wallet.initialize(seed);
   }
-  console.log('My Bitcoin address:');
-  console.log(wallet.getSomeAddress(wallet.adManager.getByMoniker('bitcoin'), false));
-  wallet.on('error', function (error) { console.log(error); });
-  wallet.subscribeAndSyncAllAddresses(function () {});
+
+  var bitcoinAsset = wallet.getAssetDefinitionByMoniker('bitcoin');
+  console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
+  wallet.subscribeAndSyncAllAddresses(function () {
+    wallet.getBalance(bitcoinAsset, function (error, balance) {
+      if (error === null) {
+        console.log('My balance: ', balance);
+      }
+
+      done(error);
+    });
+  });
 }
 
 function get_wallet() {
-  if (!wallet) {
-    initialize_wallet();
+  if (wallet === null) {
+    throw new Error('Initialize wallet first!');
   }
 
   return wallet;
 }
 
 function get_seed() {
-  if (!seed) {
-    initialize_wallet();
+  if (seed === null) {
+    throw new Error('Initialize wallet first!');
   }
 
   return seed;
@@ -224,9 +237,15 @@ function process_request(payreq, procreq, cb) {
     }
 
     throw new Error('method not supported');
+
   } catch (error) {
     cb(error, null);
+
   }
 }
 
-module.exports.process_request = process_request;
+
+module.exports = {
+  initialize_wallet: initialize_wallet,
+  process_request: process_request
+};
