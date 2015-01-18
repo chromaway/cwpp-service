@@ -141,7 +141,19 @@ CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
 CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator, cb) {
   var self = this;
   if (colorValue.isUncolored()) {
-    return OperationalTx.prototype.selectCoins.call(this, colorValue, feeEstimator, cb);
+    var fn = OperationalTx.prototype.selectCoins.bind(this);
+    return Q.nfcall(fn, colorValue, feeEstimator).spread(function (coins, totalValue) {
+      var promises = coins.map(function (coin) {
+        return Q.ninvoke(coin, 'freeze', {fromNow: 60 * 60 * 1000});
+      });
+
+      return Q.all(promises).then(function () {
+        return [coins, totalValue];
+      });
+    }).done(
+      function (result) { cb(null, result[0], result[1]); },
+      function (error) { cb(error); }
+    );
   }
 
   var coinList = new CoinList(this.ccoins);
