@@ -19,6 +19,7 @@
     "express": "^4.10.6",
     "json-stable-stringify": "^1.0.0",
     "morgan": "^1.5.1",
+    "q": "^1.1.2",
     "send-data": "^3.3.3"
   },
   "author": "Alex Mizrahi <alex.mizrahi@gmail.com>",

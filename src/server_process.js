@@ -1,3 +1,4 @@
+var Q = require('q');
 var WalletCore = require('cc-wallet-core');
 var cclib = WalletCore.cclib;
 var ColorTarget = cclib.ColorTarget;
@@ -52,15 +53,37 @@ function initialize_wallet(done) {
 
   var bitcoinAsset = wallet.getAssetDefinitionByMoniker('bitcoin');
   console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
-  wallet.subscribeAndSyncAllAddresses(function () {
-    wallet.getBalance(bitcoinAsset, function (error, balance) {
-      if (error === null) {
-        console.log('My balance: ', balance);
+
+  Q.ninvoke(wallet, 'subscribeAndSyncAllAddresses').then(function () {
+    return Q.ninvoke(wallet, 'getBalance', bitcoinAsset);
+
+  }).then(function (balance) {
+    console.log('My balance:', balance);
+
+    var coinQuery = wallet.getCoinQuery().includeUnconfirmed();
+    return Q.ninvoke(coinQuery, 'getCoins').then(function (coinList) {
+      if (coinList.getCoins().length > 10) {
+        return coinList.getCoins().length;
       }
 
-      done(error);
+      var opts = {
+        seed: seed,
+        assetdef: bitcoinAsset,
+        count: 15,
+        totalAmount: balance.total - 20000
+      };
+      return Q.nfcall(WalletCore.util.createCoins, wallet, opts).then(function () {
+        return opts.count + 1;
+
+      });
+
+    }).then(function (count) {
+      console.log('I have ' + count + ' coins');
+      return null;
+
     });
-  });
+
+  }).done(done, done);
 }
 
 function get_wallet() {
@@ -110,10 +133,8 @@ CInputsOperationalTx.prototype.getChangeAddress = function (colordef) {
 
 
 CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
-  // dirty hack
-  var coinManager = get_wallet().getStateManager()._currentState.getCoinManager();
   this.ccoins = cinputs.map(function (rawCoin) {
-    return new Coin(coinManager, rawCoin);
+    return new Coin(rawCoin, get_wallet());
   });
 };
 
