@@ -102,6 +102,16 @@ function get_seed() {
   return seed;
 }
 
+var foreignCoinMethods = {
+  isCoinAvailable: function () {
+    return true;
+  },
+  getCoinMainColorValue: function () {
+    var wsm = get_wallet().getStateManager();
+    return wsm.getCoinMainColorValue.apply(wsm, Array.prototype.slice.call(arguments));
+  }
+};
+
 
 function check_protocol(msg) {
   if (msg.protocol != 'cwpp/0.0') {
@@ -131,10 +141,9 @@ CInputsOperationalTx.prototype.getChangeAddress = function (colordef) {
   return OperationalTx.prototype.getChangeAddress.call(this, colordef);
 };
 
-
 CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
   this.ccoins = cinputs.map(function (rawCoin) {
-    return new Coin(rawCoin, get_wallet());
+    return new Coin(rawCoin, foreignCoinMethods);
   });
 };
 
