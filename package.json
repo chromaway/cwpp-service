@@ -1,31 +1,31 @@
 {
-  "name": "cwpp-service",
-  "version": "0.0.0",
+  "license": "ISC", 
+  "name": "cwpp-service", 
   "repository": {
-    "url": "git://github.com/chromaway/cwpp-service.git",
+    "url": "git://github.com/chromaway/cwpp-service.git", 
     "type": "git"
   }, 
-  "description": "The service for ChromaWay payment protocol",
-  "main": "index.js",
+  "author": "Alex Mizrahi <alex.mizrahi@gmail.com>", 
+  "version": "0.0.1", 
+  "dependencies": {
+    "body": "^4.5.0", 
+    "crypto-js": "^3.1.2-5", 
+    "send-data": "^3.3.3", 
+    "express": "^4.10.6", 
+    "bip39": "^2.1.0", 
+    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.6.5", 
+    "q": "^1.1.2", 
+    "morgan": "^1.5.1", 
+    "cors": "^2.5.2", 
+    "json-stable-stringify": "^1.0.0"
+  }, 
   "scripts": {
     "test": "echo 'No test specified'"
-  },
+  }, 
   "keywords": [
-    "bitcoin",
+    "bitcoin", 
     "payments"
-  ],
-  "dependencies": {
-    "bip39": "^2.1.0",
-    "body": "^4.5.0",
-    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.4.0",
-    "cors": "^2.5.2",
-    "crypto-js": "^3.1.2-5",
-    "express": "^4.10.6",
-    "json-stable-stringify": "^1.0.0",
-    "morgan": "^1.5.1",
-    "q": "^1.1.2",
-    "send-data": "^3.3.3"
-  },
-  "author": "Alex Mizrahi <alex.mizrahi@gmail.com>",
-  "license": "ISC"
+  ], 
+  "main": "index.js", 
+  "description": "The service for ChromaWay payment protocol"
 }
