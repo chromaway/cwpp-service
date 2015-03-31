@@ -1,6 +1,10 @@
 {
   "name": "cwpp-service",
   "version": "0.0.0",
+  "repository": {
+    "url": "git://github.com/chromaway/cwpp-service.git",
+    "type": "git"
+  }, 
   "description": "The service for ChromaWay payment protocol",
   "main": "index.js",
   "scripts": {
