@@ -21,21 +21,14 @@ function addr_to_script_hex(addr) {
 }
 
 function initialize_wallet(done) {
-  var systemAssetDefinitions = [
-    {
-      monikers: ['gold'],
-      colorDescs: ['epobc:b95323a763fa507110a89ab857af8e949810cf1e67e91104cd64222a04ccd0bb:0:180679']
-    },
-    {
-      colorDescs: ['epobc:0261b29b587020eeca15f831a5290a9d81038851da4365689be04e588ce58c66:0:303510'],
-      monikers: ['euro'],
-      unit: 100
-    }
-  ];
+  var systemAssetDefinitions = [{
+        "colorDescs": ["epobc:a254bd1a4f30d3319b8421ddeb2c2fd17893f7c6d704115f2cb0f5f37ad839af:0:354317"],
+        "monikers": ["euro"], 
+        "unit": 100
+  }];
 
   wallet = new WalletCore.Wallet({
-    testnet: true,
-    blockchain: 'NaiveBlockchain',
+    testnet: false,
     storageSaveTimeout: 0,
     spendUnconfirmedCoins: true,
     systemAssetDefinitions: systemAssetDefinitions
@@ -54,10 +47,10 @@ function initialize_wallet(done) {
   var bitcoinAsset = wallet.getAssetDefinitionByMoniker('bitcoin');
   console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
 
-  Q.ninvoke(wallet, 'subscribeAndSyncAllAddresses').then(function () {
-    return Q.ninvoke(wallet, 'getBalance', bitcoinAsset);
 
-  }).then(function (balance) {
+  wallet.once('syncStop', function () {
+    return Q.ninvoke(wallet, 'getBalance', bitcoinAsset)
+    .then(function (balance) {
     console.log('My balance:', balance);
 
     var coinQuery = wallet.getCoinQuery().includeUnconfirmed();
@@ -83,7 +76,7 @@ function initialize_wallet(done) {
 
     });
 
-  }).done(done, done);
+  }).done(done, done)});
 }
 
 function get_wallet() {
@@ -220,11 +213,11 @@ function process_cinputs_1(payreq, procreq, cb) {
 function cinputs_check_tx(payreq, procreq, rtx, cb) {
   var tx = rtx.toTransaction(true);
   var colordef = cinputs_colordef(payreq, procreq);
-  var getTxFn = get_wallet().getBlockchain().getTxFn();
-  get_wallet().getColorData().getTxColorValues(tx, colordef, getTxFn, function (error) {
+  cb(null)
+//  get_wallet().getStateManager().getTxColorValues(tx, colordef).done(
+//   function () { cb(null) },
+//   function (err) { cb(err) })
     // @todo
-    cb(error);
-  });
 }
 
 function process_cinputs_2(payreq, procreq, cb) {
