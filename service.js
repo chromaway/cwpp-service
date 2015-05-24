@@ -7,6 +7,7 @@ var SHA256 = require('crypto-js/sha256');
 var server_process = require('./src/server_process');
 var cors = require('cors');
 var logger = require('morgan');
+var URLSafeBase64 = require('urlsafe-base64');
 
 
 var app = express();
@@ -20,10 +21,17 @@ var cwpp_api = express.Router();
 
 var pay_reqs = {};
 
+function hashMessage_short (body) {
+  var sha256hex = SHA256(stringify(body)).toString();
+  var slice = (new Buffer(sha256hex, 'hex')).slice(0, 20);
+  return URLSafeBase64.encode(slice);
+}
+
 cwpp_api.post('/new-request', function (req, res) {
   console.log('new-request');
   jsonBody(req, function (error, body) {
     var hash = SHA256(stringify(body)).toString();
+    //var hash = hashMessage_short (body)
     pay_reqs[hash] = body;
     sendJson(req, res, {"hash": hash});
   });
@@ -74,7 +82,7 @@ server_process.initialize_wallet(function (error) {
     throw error;
   }
 
-  var server = app.listen(4242, function () {
+  var server = app.listen(4243, function () {
     console.log('Listening on port %d', server.address().port);
   });
 });
