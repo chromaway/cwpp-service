@@ -11,6 +11,9 @@ var Coin = WalletCore.coin.Coin;
 var inherits = require('util').inherits;
 var BIP39 = require('bip39');
 
+var log_data = require('chroma-log-data');
+
+
 var wallet = null;
 var seed = null;
 
@@ -18,6 +21,11 @@ var seed = null;
 function addr_to_script_hex(addr) {
   var script = bitcoin.Address.fromBase58Check(addr).toOutputScript();
   return script.toHex();
+}
+
+function log_wallet_state() {
+  log_data.log('CWPPWalletStateReport', 
+    {walletState: get_wallet().walletStateStorage.getState()});
 }
 
 function initialize_wallet(done) {
@@ -275,12 +283,12 @@ function process_request(payreq, procreq, cb) {
 
   } catch (error) {
     cb(error, null);
-
   }
 }
 
 
 module.exports = {
   initialize_wallet: initialize_wallet,
-  process_request: process_request
+  process_request: process_request,
+  log_wallet_state: log_wallet_state
 };

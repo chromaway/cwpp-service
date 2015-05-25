@@ -8,7 +8,7 @@ var server_process = require('./src/server_process');
 var cors = require('cors');
 var logger = require('morgan');
 var URLSafeBase64 = require('urlsafe-base64');
-
+var fs = require('fs');
 
 var app = express();
 
@@ -32,18 +32,34 @@ cwpp_api.post('/new-request', function (req, res) {
   jsonBody(req, function (error, body) {
     var hash = SHA256(stringify(body)).toString();
     //var hash = hashMessage_short (body)
-    pay_reqs[hash] = body;
+    fs.writeFileSync('payreqs/' + hash, stringify(body));
+    pay_reqs[hash] = body;             
     sendJson(req, res, {"hash": hash});
   });
 });
 
+function get_pay_request(rq_hash) {
+  var pay_req = pay_reqs[rq_hash];
+  if (!pay_req) {
+    if (/[^a-zA-Z0-9_\-]/.test(rq_hash)) {
+      console.log('bad rq_hash:', rq_hash);
+      return null;
+    }
+    try {
+      pay_req = JSON.parse(fs.readFileSync('payreqs/' + req.params.rq_hash));
+    } catch (x) {
+      console.log(x);
+    }    
+  }
+  return pay_req;  
+}
+
 cwpp_api.get('/:rq_hash', function (req, res) {
-  if (pay_reqs[req.params.rq_hash]) {
-    res.json(pay_reqs[req.params.rq_hash]);
-
+  var pay_req = get_pay_request(req.params.rq_hash);
+  if (pay_req) {
+    return res.json(pay_reqs);
   } else {
-    res.status(404).json({error: 'requrest not found'});
-
+    return res.status(404).json({error: 'request not found'});
   }
 });
 
@@ -52,7 +68,8 @@ function process_request(rq, body, cb) {
 }
 
 cwpp_api.post('/process/:rq_hash', function (req, res) {
-  if (typeof pay_reqs[req.params.rq_hash] === 'undefined') {
+  var pay_req = get_pay_request(req.params.rq_hash);
+  if (!pay_req) {
     return res.status(404).json({error: 'requrest not found'});
   }
 
@@ -61,14 +78,13 @@ cwpp_api.post('/process/:rq_hash', function (req, res) {
       return res.status(400).json({error: 'JSON required'});
     }
 
-    process_request(pay_reqs[req.params.rq_hash], body, function (error, res_body) {
+    process_request(pay_req, body, function (error, res_body) {
       if (error) {
         res.status(500).json({error: error.toString()});
         console.log(error.stack);
-
+        server_process.log_wallet_state();
       } else {
         res.json(res_body);
-
       }
     });
   });
