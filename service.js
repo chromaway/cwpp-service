@@ -46,7 +46,7 @@ function get_pay_request(rq_hash) {
       return null;
     }
     try {
-      pay_req = JSON.parse(fs.readFileSync('payreqs/' + req.params.rq_hash));
+      pay_req = JSON.parse(fs.readFileSync('payreqs/' + rq_hash));
     } catch (x) {
       console.log(x);
     }    
@@ -57,7 +57,7 @@ function get_pay_request(rq_hash) {
 cwpp_api.get('/:rq_hash', function (req, res) {
   var pay_req = get_pay_request(req.params.rq_hash);
   if (pay_req) {
-    return res.json(pay_reqs);
+    return res.json(pay_req);
   } else {
     return res.status(404).json({error: 'request not found'});
   }
