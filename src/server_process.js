@@ -154,7 +154,8 @@ CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator,
     var fn = OperationalTx.prototype.selectCoins.bind(this);
     return Q.nfcall(fn, colorValue, feeEstimator).spread(function (coins, totalValue) {
       var promises = coins.map(function (coin) {
-        return Q.ninvoke(coin, 'freeze', {fromNow: 60 * 60 * 1000});
+        var lockTime = Math.round(Date.now() / 1000) + 60 * 60;
+        return Q.ninvoke(coin, 'freeze', {timestamp: lockTime});
       });
 
       return Q.all(promises).then(function () {
