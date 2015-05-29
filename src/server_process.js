@@ -240,7 +240,8 @@ function process_cinputs_2(payreq, procreq, cb) {
       if (error) {
         return cb(error);
       }
-
+      console.log(stx.getId());
+      console.log(stx.toHex());
       cb(null, {protocol: 'cwpp/0.0', 'tx_data': stx.toHex()});
     });
   });
