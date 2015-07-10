@@ -203,20 +203,35 @@ function cinputs_operational_txs(payreq, procreq) {
 
 function process_cinputs_1(payreq, procreq, cb) {
   var colordef = cinputs_colordef(payreq, procreq);
-  var optxs = cinputs_operational_txs(payreq, procreq);
-  colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
-    if (error) {
-      return cb(error);
-    }
 
-    get_wallet().transformTx(ctx, 'raw', {}, function (error, tx) {
-      if (error) {
-        return cb(error);
+  Q.all(payreq.cinputs.map(function (rawCoin) {
+                       return wallet.getBlockchain().getTxBlockHash(rawCoin.txId).then(function (txb) {
+                           if (txb && txb.block)
+                             return true;
+                           else
+                             return false;
+                         })
+                     }))
+  .then(function (vals) {
+      if (_.all(vals)) {
+        var optxs = cinputs_operational_txs(payreq, procreq);
+        colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
+          if (error) {
+            return cb(error);
+          }
+          get_wallet().transformTx(ctx, 'raw', {}, function (error, tx) {
+            if (error) {
+              return cb(error);
+            }
+            cb(null, {'protocol': 'cwpp/0.0', 'tx_data': tx.toHex(true)});
+          });
+        });
+      } else {
+        cb(new Exception('coins are not confirmed yet'))
       }
-
-      cb(null, {'protocol': 'cwpp/0.0', 'tx_data': tx.toHex(true)});
-    });
-  });
+  }).catch(function (err) {
+      cb(err);
+  })
 }
 
 function cinputs_check_tx(payreq, procreq, rtx, cb) {
