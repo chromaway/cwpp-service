@@ -24,14 +24,14 @@ function addr_to_script_hex(addr) {
 }
 
 function log_wallet_state() {
-  log_data.log('CWPPWalletStateReport', 
+  log_data.log('CWPPWalletStateReport',
     {walletState: get_wallet().walletStateStorage.getState()});
 }
 
 function initialize_wallet(done) {
   var systemAssetDefinitions = [{
         "colorDescs": ["epobc:a254bd1a4f30d3319b8421ddeb2c2fd17893f7c6d704115f2cb0f5f37ad839af:0:354317"],
-        "monikers": ["euro"], 
+        "monikers": ["euro"],
         "unit": 100
   }];
 
@@ -203,35 +203,18 @@ function cinputs_operational_txs(payreq, procreq) {
 
 function process_cinputs_1(payreq, procreq, cb) {
   var colordef = cinputs_colordef(payreq, procreq);
-
-  Q.all(payreq.cinputs.map(function (rawCoin) {
-                       return wallet.getBlockchain().getTxBlockHash(rawCoin.txId).then(function (txb) {
-                           if (txb && txb.block)
-                             return true;
-                           else
-                             return false;
-                         })
-                     }))
-  .then(function (vals) {
-      if (_.all(vals)) {
-        var optxs = cinputs_operational_txs(payreq, procreq);
-        colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
-          if (error) {
-            return cb(error);
-          }
-          get_wallet().transformTx(ctx, 'raw', {}, function (error, tx) {
-            if (error) {
-              return cb(error);
-            }
-            cb(null, {'protocol': 'cwpp/0.0', 'tx_data': tx.toHex(true)});
-          });
-        });
-      } else {
-        cb(new Exception('coins are not confirmed yet'))
+  var optxs = cinputs_operational_txs(payreq, procreq);
+  colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
+    if (error) {
+      return cb(error);
+    }
+    get_wallet().transformTx(ctx, 'raw', {}, function (error, tx) {
+      if (error) {
+        return cb(error);
       }
-  }).catch(function (err) {
-      cb(err);
-  })
+      cb(null, {'protocol': 'cwpp/0.0', 'tx_data': tx.toHex(true)});
+    });
+  });
 }
 
 function cinputs_check_tx(payreq, procreq, rtx, cb) {
@@ -262,6 +245,17 @@ function process_cinputs_2(payreq, procreq, cb) {
   });
 }
 
+function isAllTxIdsConfirmed (txIds) {
+  return Q.all(txIds.map(function (txId) {
+    return wallet.getBlockchain().getTxBlockHash(txId)
+      .then(function (txb) { return txb.source === 'blocks'; });
+  }))
+  .then((function (vals) {
+    if (_.all(vals) === false) {
+      throw new Exception('coins are not confirmed yet');
+    }
+  }));
+}
 
 function process_cinputs(payreq, procreq, cb) {
   if (payreq.messageType != 'PaymentRequest') {
@@ -272,15 +266,28 @@ function process_cinputs(payreq, procreq, cb) {
     throw new Error('PaymentRequest doesn\'t support cinputs');
   }
 
+  var txIds;
+  var nextFn;
+
   if (procreq.stage == 1) {
-    return process_cinputs_1(payreq, procreq, cb);
+    txIds = _.pluck(payreq.cinputs, 'txId');
+    nextFn = process_cinputs_1;
+  } else if (procreq.stage == 2) {
+    txIds = RawTx.fromHex(procreq.tx).inputs.map(function (input) {
+      return input.prevTxId.toString('hex');
+    });
+    nextFn = process_cinputs_2;
+  } else {
+    throw new Error('invalid stage for cinputs');
   }
 
-  if (procreq.stage == 2) {
-    return process_cinputs_2(payreq, procreq, cb);
-  }
-
-  throw new Error('invalid stage for cinputs');
+  isAllTxIdsConfirmed(_.uniq(txIds))
+    .then(function () {
+      nextFn(payreq, procreq, cb);
+    })
+    .catch(function (err) {
+      cb(err);
+    });
 }
 
 function process_request(payreq, procreq, cb) {
