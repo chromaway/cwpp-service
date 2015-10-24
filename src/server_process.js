@@ -29,26 +29,18 @@ function log_wallet_state() {
     {walletState: get_wallet().walletStateStorage.getState()});
 }
 
-function initialize_wallet(done) {
-  var systemAssetDefinitions = [{
-        "colorDescs": ["epobc:a254bd1a4f30d3319b8421ddeb2c2fd17893f7c6d704115f2cb0f5f37ad839af:0:354317"],
-        "monikers": ["euro"],
-        "unit": 100
-  }];
-
+function initialize_wallet(config, done) {
   wallet = new WalletCore.Wallet({
-    testnet: false,
+    testnet: config.testnet,
     storageSaveTimeout: 0,
-    spendUnconfirmedCoins: false,
-    systemAssetDefinitions: systemAssetDefinitions
+    spendUnconfirmedCoins: config.spendUnconfirmedCoins,
+    systemAssetDefinitions: config.assetDefinitions
   });
   wallet.on('error', function (error) {
     console.log('Wallet error: ', error.stack || error);
   });
 
-  var mnemonic = 'provide rail journey neither script nasty fetch south seat obvious army two';
-  var password = '';
-  seed = BIP39.mnemonicToSeedHex(mnemonic, password);
+  seed = BIP39.mnemonicToSeedHex(config.walletMnemonic, config.walletPassword);
   if (!wallet.isInitialized()) {
     wallet.initialize(seed);
   }

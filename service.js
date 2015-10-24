@@ -9,6 +9,7 @@ var cors = require('cors');
 var logger = require('morgan');
 var URLSafeBase64 = require('urlsafe-base64');
 var fs = require('fs');
+var config = require('./config')
 
 var app = express();
 
@@ -93,7 +94,7 @@ cwpp_api.post('/process/:rq_hash', function (req, res) {
 app.use('/cwpp', cwpp_api);
 
 
-server_process.initialize_wallet(function (error) {
+server_process.initialize_wallet(config, function (error) {
   if (error !== null) {
     throw error;
   }
