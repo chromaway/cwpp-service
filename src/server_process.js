@@ -10,6 +10,7 @@ var CoinList = WalletCore.coin.CoinList;
 var Coin = WalletCore.coin.Coin;
 var inherits = require('util').inherits;
 var BIP39 = require('bip39');
+var _ = require('lodash');
 
 var log_data = require('chroma-log-data');
 
@@ -38,7 +39,7 @@ function initialize_wallet(done) {
   wallet = new WalletCore.Wallet({
     testnet: false,
     storageSaveTimeout: 0,
-    spendUnconfirmedCoins: true,
+    spendUnconfirmedCoins: false,
     systemAssetDefinitions: systemAssetDefinitions
   });
   wallet.on('error', function (error) {
@@ -248,11 +249,14 @@ function process_cinputs_2(payreq, procreq, cb) {
 function isAllTxIdsConfirmed (txIds) {
   return Q.all(txIds.map(function (txId) {
     return wallet.getBlockchain().getTxBlockHash(txId)
-      .then(function (txb) { return txb.source === 'blocks'; });
+      .then(function (txb) { 
+         console.log(txb.source);
+         return txb.source === 'blocks'; 
+       });
   }))
   .then((function (vals) {
     if (_.all(vals) === false) {
-      throw new Exception('coins are not confirmed yet');
+      throw new Error('coins are not confirmed yet');
     }
   }));
 }
@@ -273,8 +277,9 @@ function process_cinputs(payreq, procreq, cb) {
     txIds = _.pluck(payreq.cinputs, 'txId');
     nextFn = process_cinputs_1;
   } else if (procreq.stage == 2) {
-    txIds = RawTx.fromHex(procreq.tx).inputs.map(function (input) {
-      return input.prevTxId.toString('hex');
+    var tx = RawTx.fromHex(procreq.tx).toTransaction(true)
+    txIds = tx.ins.map(function (input) {
+      return bitcoin.util.hashEncode(input.hash)
     });
     nextFn = process_cinputs_2;
   } else {

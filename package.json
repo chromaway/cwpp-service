@@ -13,7 +13,7 @@
     "send-data": "^3.3.3", 
     "express": "^4.10.6", 
     "bip39": "^2.1.0", 
-    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.8.4", 
+    "cc-wallet-core": "git://github.com/chromaway/cc-wallet-core.git#v0.8.8", 
     "q": "^1.1.2", 
     "morgan": "^1.5.1", 
     "cors": "^2.5.2", 
