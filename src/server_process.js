@@ -47,6 +47,8 @@ function initialize_wallet(config, done) {
 
   var bitcoinAsset = wallet.getAssetDefinitionByMoniker('bitcoin');
   console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
+  var euroAsset = wallet.getAssetDefinitionByMoniker('testeuro');
+  console.log('My Euro address:', wallet.getSomeAddress(euroAsset));
 
 
   wallet.once('syncStop', function () {
@@ -114,25 +116,33 @@ function check_protocol(msg) {
   return true;
 }
 
-function cinputs_colordef(payreq, procreq) {
-  var colorDesc = payreq.colorDesc;
+function cinputs_colordef(req) {
+  var colorDesc = req.colorDesc;
   return get_wallet().cdManager.resolveByDesc(colorDesc, true);
 }
 
-function CInputsOperationalTx(wallet, colordef) {
+function CInputsOperationalTx(wallet, in_colordef, out_colordef) {
   this.wallet = wallet;
-  this.colordef = colordef;
+  this.in_colordef = in_colordef;
+  this.out_colordef = out_colordef;
   this.targets = [];
+  this.suppliedValue = null
 }
 
 inherits(CInputsOperationalTx, OperationalTx);
 
-CInputsOperationalTx.prototype.getChangeAddress = function (colordef) {
-  if (colordef.getColorType() !== 'uncolored') {
-    throw new Error('colored change not supported');
-  }
+CInputsOperationalTx.prototype.addSupply = function (suppliedValue) {
+  if (this.suppliedValue) throw new Error('can supply only a single color')
+  this.suppliedValue = suppliedValue
+}
 
+CInputsOperationalTx.prototype.getChangeAddress = function (colordef) {
   return OperationalTx.prototype.getChangeAddress.call(this, colordef);
+  // TODO: be more specific here
+/*  if ((colordef.getColorType() === 'uncolored')
+      || (this.suppliedValue && this.suppliedValue.getColorId() === colordef.getColorId()))
+  else
+    throw new Error('no change address for this color ' + colordef.getDesc());*/
 };
 
 CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
@@ -143,7 +153,24 @@ CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
 
 CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator, cb) {
   var self = this;
-  if (colorValue.isUncolored()) {
+
+  var useOwnCoins = false
+
+  if (colorValue.isUncolored())
+    useOwnCoins = true
+  else {
+    if (this.suppliedValue && this.suppliedValue.getColorId() === colorValue.getColorId()) {
+      if (colorValue.getValue() <= this.suppliedValue.getValue()) {
+        useOwnCoins = true
+      } else {
+        return cb(new Error("requested value exceeds allowed supply: " 
+                            + colorValue.getValue().toString() + " > " 
+                            + this.suppliedValue.getValue().toString()))
+      }
+    }
+  }
+
+  if (useOwnCoins) {
     var fn = OperationalTx.prototype.selectCoins.bind(this);
     return Q.nfcall(fn, colorValue, feeEstimator).spread(function (coins, totalValue) {
       var promises = coins.map(function (coin) {
@@ -170,7 +197,7 @@ CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator,
       return cb(new Error('provided coins have ambiguous colorvalue'));
     }
 
-    if (totalValues[0].getColorId() !== self.colordef.getColorId()) {
+    if (totalValues[0].getColorId() !== self.in_colordef.getColorId()) {
       return cb(new Error('provided coins are of a wrong color'));
     }
 
@@ -178,24 +205,42 @@ CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator,
   });
 };
 
+
+function allowedExchange(in_cd, out_cd) {
+  return true
+}
+
 function cinputs_operational_txs(payreq, procreq) {
-  var colordef = cinputs_colordef(payreq, procreq);
-  function createColorTarget(address, value) {
+  var out_colordef = cinputs_colordef(payreq);
+  var in_colordef = cinputs_colordef(procreq);
+
+  function createColorTarget(address, colordef, value) {
     return new ColorTarget(addr_to_script_hex(address), new ColorValue(colordef, value));
   }
 
-  var op_txs = new CInputsOperationalTx(get_wallet(), colordef);
+  var op_txs = new CInputsOperationalTx(get_wallet(), in_colordef, out_colordef);
   op_txs.addColoredInputs(procreq.cinputs);
-  op_txs.addTarget(createColorTarget(payreq.address, payreq.value));
+
+  if (in_colordef.getColorId() !== out_colordef.getColorId()) {
+    if (!allowedExchange(in_colordef, out_colordef)) 
+      throw new Error('exchange not allowed')
+    // TODO: check if sum of inputs doesn't exceed payreq.value
+    op_txs.addSupply(new ColorValue(out_colordef, payreq.value))
+    op_txs.addTarget(createColorTarget(op_txs.getChangeAddress(in_colordef),
+                                       in_colordef, payreq.value))
+    // TODO: add target for in_colordef coins
+  }
+
+  op_txs.addTarget(createColorTarget(payreq.address, out_colordef, payreq.value));
   if (procreq.change) {
-    op_txs.addTarget(createColorTarget(procreq.change.address, procreq.change.value));
+    op_txs.addTarget(createColorTarget(procreq.change.address, in_colordef, procreq.change.value));
   }
 
   return op_txs;
 }
 
 function process_cinputs_1(payreq, procreq, cb) {
-  var colordef = cinputs_colordef(payreq, procreq);
+  var colordef = cinputs_colordef(payreq);
   var optxs = cinputs_operational_txs(payreq, procreq);
   colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
     if (error) {
@@ -212,7 +257,7 @@ function process_cinputs_1(payreq, procreq, cb) {
 
 function cinputs_check_tx(payreq, procreq, rtx, cb) {
   var tx = rtx.toTransaction(true);
-  var colordef = cinputs_colordef(payreq, procreq);
+  var colordef = cinputs_colordef(payreq);
   cb(null)
 //  get_wallet().getStateManager().getTxColorValues(tx, colordef).done(
 //   function () { cb(null) },
