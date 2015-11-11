@@ -47,8 +47,8 @@ function initialize_wallet(config, done) {
 
   var bitcoinAsset = wallet.getAssetDefinitionByMoniker('bitcoin');
   console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
-  var euroAsset = wallet.getAssetDefinitionByMoniker('testeuro');
-  console.log('My Euro address:', wallet.getSomeAddress(euroAsset));
+  var euroAsset = wallet.getAssetDefinitionByMoniker('euro2');
+  console.log('My Euro address:', wallet.getSomeAddress(euroAsset, true));
 
 
   wallet.once('syncStop', function () {

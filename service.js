@@ -99,7 +99,7 @@ server_process.initialize_wallet(config, function (error) {
     throw error;
   }
 
-  var server = app.listen(4243, function () {
+  var server = app.listen(4245, function () {
     console.log('Listening on port %d', server.address().port);
   });
 });
