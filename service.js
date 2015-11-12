@@ -48,6 +48,7 @@ function get_pay_request(rq_hash) {
     }
     try {
       pay_req = JSON.parse(fs.readFileSync('payreqs/' + rq_hash));
+      pay_reqs[rq_hash] = pay_req;
     } catch (x) {
       console.log(x);
     }    
