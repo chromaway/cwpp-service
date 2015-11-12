@@ -4,6 +4,7 @@ var cclib = WalletCore.cclib;
 var ColorTarget = cclib.ColorTarget;
 var ColorValue = cclib.ColorValue;
 var bitcoin = cclib.bitcoin;
+var Script = bitcoin.Script
 var OperationalTx = WalletCore.tx.OperationalTx;
 var RawTx = WalletCore.tx.RawTx;
 var CoinList = WalletCore.coin.CoinList;
@@ -18,6 +19,10 @@ var log_data = require('chroma-log-data');
 var wallet = null;
 var seed = null;
 
+var exchangeMap = {}
+var collectionAddresses = {}
+var allowUnconfirmedCoins = false
+var obsoleteColors = []
 
 function addr_to_script_hex(addr) {
   var script = bitcoin.Address.fromBase58Check(addr).toOutputScript();
@@ -40,6 +45,11 @@ function initialize_wallet(config, done) {
     console.log('Wallet error: ', error.stack || error);
   });
 
+  if (config.exchangeMap) exchangeMap = config.exchangeMap  
+  if (config.collectionAddresses) collectionAddresses = config.collectionAddresses
+  if (config.allowUnconfirmedCoins) allowUnconfirmedCoins = true
+  if (config.obsoleteColors) obsoleteColors = config.obsoleteColors
+
   seed = BIP39.mnemonicToSeedHex(config.walletMnemonic, config.walletPassword);
   if (!wallet.isInitialized()) {
     wallet.initialize(seed);
@@ -49,7 +59,6 @@ function initialize_wallet(config, done) {
   console.log('My Bitcoin address:', wallet.getSomeAddress(bitcoinAsset));
   var euroAsset = wallet.getAssetDefinitionByMoniker('euro2');
   console.log('My Euro address:', wallet.getSomeAddress(euroAsset, true));
-
 
   wallet.once('syncStop', function () {
     return Q.ninvoke(wallet, 'getBalance', bitcoinAsset)
@@ -137,12 +146,11 @@ CInputsOperationalTx.prototype.addSupply = function (suppliedValue) {
 }
 
 CInputsOperationalTx.prototype.getChangeAddress = function (colordef) {
-  return OperationalTx.prototype.getChangeAddress.call(this, colordef);
-  // TODO: be more specific here
-/*  if ((colordef.getColorType() === 'uncolored')
+  if ((colordef.getColorType() === 'uncolored')
       || (this.suppliedValue && this.suppliedValue.getColorId() === colordef.getColorId()))
+    return OperationalTx.prototype.getChangeAddress.call(this, colordef);
   else
-    throw new Error('no change address for this color ' + colordef.getDesc());*/
+    throw new Error('no change address for this color ' + colordef.getDesc());
 };
 
 CInputsOperationalTx.prototype.addColoredInputs = function (cinputs) {
@@ -207,7 +215,10 @@ CInputsOperationalTx.prototype.selectCoins = function (colorValue, feeEstimator,
 
 
 function allowedExchange(in_cd, out_cd) {
-  return true
+  if (exchangeMap[in_cd.getDesc()] === out_cd.getDesc())
+    return true
+  else
+    return false
 }
 
 function cinputs_operational_txs(payreq, procreq) {
@@ -224,11 +235,11 @@ function cinputs_operational_txs(payreq, procreq) {
   if (in_colordef.getColorId() !== out_colordef.getColorId()) {
     if (!allowedExchange(in_colordef, out_colordef)) 
       throw new Error('exchange not allowed')
-    // TODO: check if sum of inputs doesn't exceed payreq.value
     op_txs.addSupply(new ColorValue(out_colordef, payreq.value))
-    op_txs.addTarget(createColorTarget(op_txs.getChangeAddress(in_colordef),
+    var address = (collectionAddresses[in_colordef.getDesc()] 
+                   || get_wallet().getSomeAddress(in_colordef))
+    op_txs.addTarget(createColorTarget(address,
                                        in_colordef, payreq.value))
-    // TODO: add target for in_colordef coins
   }
 
   op_txs.addTarget(createColorTarget(payreq.address, out_colordef, payreq.value));
@@ -241,6 +252,9 @@ function cinputs_operational_txs(payreq, procreq) {
 
 function process_cinputs_1(payreq, procreq, cb) {
   var colordef = cinputs_colordef(payreq);
+  if (_.contains(obsoleteColors, colordef.getDesc())) {
+    return cb(new Error("Please update your wallet app"))
+  }
   var optxs = cinputs_operational_txs(payreq, procreq);
   colordef.constructor.makeComposedTx(optxs, function (error, ctx) {
     if (error) {
@@ -250,6 +264,9 @@ function process_cinputs_1(payreq, procreq, cb) {
       if (error) {
         return cb(error);
       }
+      var tx_hash = tx.toTransaction(true).getId()
+      if (payreq.__txids === undefined) payreq.__txids = []
+      payreq.__txids.push(tx_hash)
       cb(null, {'protocol': 'cwpp/0.0', 'tx_data': tx.toHex(true)});
     });
   });
@@ -257,12 +274,12 @@ function process_cinputs_1(payreq, procreq, cb) {
 
 function cinputs_check_tx(payreq, procreq, rtx, cb) {
   var tx = rtx.toTransaction(true);
-  var colordef = cinputs_colordef(payreq);
-  cb(null)
-//  get_wallet().getStateManager().getTxColorValues(tx, colordef).done(
-//   function () { cb(null) },
-//   function (err) { cb(err) })
-    // @todo
+  tx.ins.map(function (txin) {  txin.script = Script.EMPTY })
+  var txid  = tx.getId()
+  if (payreq.__txids && _.contains(payreq.__txids, txid))
+    cb(null)
+  else
+    cb(new Error('Transaction check failed'))
 }
 
 function process_cinputs_2(payreq, procreq, cb) {
@@ -284,6 +301,8 @@ function process_cinputs_2(payreq, procreq, cb) {
 }
 
 function isAllTxIdsConfirmed (txIds) {
+  if (allowUnconfirmedCoins)
+    return Q(true)
   return Q.all(txIds.map(function (txId) {
     return wallet.getBlockchain().getTxBlockHash(txId)
       .then(function (txb) { 
