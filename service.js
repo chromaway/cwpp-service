@@ -96,9 +96,10 @@ app.use('/cwpp', cwpp_api);
 
 
 server_process.initialize_wallet(config, function (error) {
-  if (error !== null) {
+  if (error) {
     throw error;
   }
+  console.log('initialized')
 
   var server = app.listen(config.port || 4243, function () {
     console.log('Listening on port %d', server.address().port);
